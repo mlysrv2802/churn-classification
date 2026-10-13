@@ -27,7 +27,7 @@ def build_preprocessor() -> ColumnTransformer:
             ("num", StandardScaler(), make_column_selector(dtype_include=np.number)),
             (
                 "cat",
-                OneHotEncoder(handle_unknown="ignore"),
+                OneHotEncoder(handle_unknown="ignore", sparse_output=False),
                 make_column_selector(dtype_exclude=np.number),
             ),
         ]
