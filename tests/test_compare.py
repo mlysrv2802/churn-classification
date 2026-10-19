@@ -8,6 +8,7 @@ def test_candidates_include_all_models():
     assert set(candidates()) == {
         "Dummy",
         "LogisticRegression",
+        "LogisticRegression+Poly2",
         "RandomForest",
         "GradientBoosting",
     }

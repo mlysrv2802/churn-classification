@@ -13,13 +13,24 @@ def build_dummy() -> BaseEstimator:
     return DummyClassifier(strategy="most_frequent")
 
 
-def _pipeline(estimator: BaseEstimator) -> Pipeline:
+def _pipeline(
+    estimator: BaseEstimator,
+    poly_degree: int = 1,
+    spline_columns: list[str] | None = None,
+) -> Pipeline:
     """Preprocessing + model in ONE pipeline, so train and serve cannot drift."""
-    return Pipeline([("prep", build_preprocessor()), ("model", estimator)])
+    prep = build_preprocessor(poly_degree, spline_columns)
+    return Pipeline([("prep", prep), ("model", estimator)])
 
 
-def build_logistic_regression() -> Pipeline:
-    return _pipeline(LogisticRegression(max_iter=1000, random_state=RANDOM_STATE))
+def build_logistic_regression(
+    poly_degree: int = 1, spline_columns: list[str] | None = None
+) -> Pipeline:
+    return _pipeline(
+        LogisticRegression(max_iter=2000, random_state=RANDOM_STATE),
+        poly_degree,
+        spline_columns,
+    )
 
 
 def build_random_forest() -> Pipeline:
@@ -39,6 +50,7 @@ def candidates() -> dict[str, BaseEstimator]:
     return {
         "Dummy": build_dummy(),
         "LogisticRegression": build_logistic_regression(),
+        "LogisticRegression+Poly2": build_logistic_regression(poly_degree=2),
         "RandomForest": build_random_forest(),
         "GradientBoosting": build_gradient_boosting(),
     }
