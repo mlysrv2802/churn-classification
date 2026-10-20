@@ -1,9 +1,7 @@
-import json
 import platform
 from datetime import datetime, timezone
 from pathlib import Path
 
-import joblib
 import pandas as pd
 import sklearn
 
@@ -12,14 +10,15 @@ from churn.data import clean, load_raw
 from churn.evaluate import evaluate
 from churn.features import split
 from churn.models import build_logistic_regression
+from churn.registry import ModelRegistry
 from churn.thresholds import out_of_fold_proba, pick_threshold, threshold_table
-
-MODEL_FILE = "churn_model.joblib"
-METADATA_FILE = "churn_model.json"
 
 
 def train_and_save(model_dir: Path = MODELS_DIR, by: str = "f1") -> dict:
-    """Train the final model, pick its cutoff, and save both to model_dir.
+    """Train the final model, pick its cutoff, and save both as a new registry version.
+
+    The new version becomes production only if it passes the registry's
+    "not clearly worse" check (see ModelRegistry.maybe_promote).
 
     Final model: plain logistic regression. Every candidate scored within
     noise of the best (CV ROC-AUC about 0.845 to 0.849, std about 0.012), so
@@ -56,7 +55,7 @@ def train_and_save(model_dir: Path = MODELS_DIR, by: str = "f1") -> dict:
         },
     }
 
-    model_dir.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, model_dir / MODEL_FILE)
-    (model_dir / METADATA_FILE).write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-    return metadata
+    registry = ModelRegistry(model_dir)
+    version = registry.save(model, metadata)
+    promoted, reason = registry.maybe_promote(version)
+    return {**metadata, "version": version, "promoted": promoted, "promotion_reason": reason}

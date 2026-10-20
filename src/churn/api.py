@@ -20,7 +20,7 @@ def create_app(model_dir: Path = MODELS_DIR) -> FastAPI:
             app.state.predictor = ChurnPredictor(model_dir)
         except FileNotFoundError as exc:
             raise RuntimeError(
-                f"No saved model in {model_dir}. Run `python scripts\\train.py` first."
+                f"No production model in {model_dir}. Run `python scripts\\train.py` first."
             ) from exc
         yield
 
@@ -44,6 +44,7 @@ def create_app(model_dir: Path = MODELS_DIR) -> FastAPI:
             churn_probability=float(scored["churn_probability"]),
             flagged=bool(scored["flagged"]),
             threshold=predictor.metadata["threshold"],
+            model_version=predictor.metadata["version"],
         )
 
     return app

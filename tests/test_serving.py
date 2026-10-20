@@ -1,11 +1,10 @@
-import json
-
 import pandas as pd
 import pytest
 
 from churn.data import clean, load_raw, prepare_features
 from churn.predict import ChurnPredictor
-from churn.train import METADATA_FILE, MODEL_FILE
+from churn.registry import MODEL_FILE, ModelRegistry
+from churn.train import train_and_save
 
 
 def test_prepare_features_is_safe_to_run_twice_and_without_id():
@@ -16,9 +15,13 @@ def test_prepare_features_is_safe_to_run_twice_and_without_id():
     assert "customerID" not in once.columns
 
 
-def test_training_saves_model_and_metadata(saved_dir):
-    assert (saved_dir / MODEL_FILE).exists()
-    meta = json.loads((saved_dir / METADATA_FILE).read_text(encoding="utf-8"))
+def test_training_saves_a_production_version_with_metadata(saved_dir):
+    registry = ModelRegistry(saved_dir)
+    version = registry.production_version()
+    assert version is not None
+    assert (registry.versions_dir / version / MODEL_FILE).exists()
+    meta = registry.metadata(version)
+    assert meta["version"] == version
     assert 0.1 <= meta["threshold"] <= 0.9
     assert meta["test_metrics"]["roc_auc"] > 0.8
     assert "Churn" not in meta["feature_columns"]
@@ -36,6 +39,17 @@ def test_raw_and_cleaned_records_get_identical_predictions(saved_dir):
     from_clean = predictor.predict(clean(sample))
     pd.testing.assert_frame_equal(from_raw, from_clean)
     assert from_raw["churn_probability"].between(0, 1).all()
+
+
+def test_training_twice_keeps_both_versions_and_serves_the_newest(tmp_path):
+    first = train_and_save(model_dir=tmp_path)
+    second = train_and_save(model_dir=tmp_path)  # same data, so same score: allowed to replace
+    assert first["version"] != second["version"]
+    assert second["promoted"] is True
+    registry = ModelRegistry(tmp_path)
+    assert len(registry.list_versions()) == 2
+    assert registry.production_version() == second["version"]
+    assert ChurnPredictor(tmp_path).metadata["version"] == second["version"]
 
 
 def test_flag_follows_saved_threshold(saved_dir):

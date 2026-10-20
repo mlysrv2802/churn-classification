@@ -1,22 +1,20 @@
-import json
 from pathlib import Path
 
-import joblib
 import pandas as pd
 
 from churn.config import MODELS_DIR
-from churn.train import METADATA_FILE, MODEL_FILE
+from churn.registry import ModelRegistry
 
 
 class ChurnPredictor:
-    """Loads the saved model once and scores raw customer records.
+    """Loads a saved model once and scores raw customer records.
 
+    By default it loads the production version; pass `version` to load another.
     Load it once at startup and reuse it, like a Spring singleton bean.
     """
 
-    def __init__(self, model_dir: Path = MODELS_DIR):
-        self.model = joblib.load(model_dir / MODEL_FILE)
-        self.metadata = json.loads((model_dir / METADATA_FILE).read_text(encoding="utf-8"))
+    def __init__(self, model_dir: Path = MODELS_DIR, version: str | None = None):
+        self.model, self.metadata = ModelRegistry(model_dir).load(version)
 
     def predict(self, records: pd.DataFrame) -> pd.DataFrame:
         """Score raw records (TotalCharges may be text; customerID is optional)."""

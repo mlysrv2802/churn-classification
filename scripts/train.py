@@ -11,7 +11,8 @@ def main() -> None:
     args = parser.parse_args()
 
     metadata = train_and_save(by=args.by)
-    print("Saved model to the models/ folder. Metadata:\n")
+    status = "PROMOTED to production" if metadata["promoted"] else "NOT promoted"
+    print(f"Saved version {metadata['version']}: {status} ({metadata['promotion_reason']})\n")
     print(json.dumps(metadata, indent=2))
 
 

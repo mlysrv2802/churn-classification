@@ -32,6 +32,7 @@ def test_predict_returns_probability_and_flag(client):
     body = response.json()
     assert 0 <= body["churn_probability"] <= 1
     assert body["flagged"] == (body["churn_probability"] >= body["threshold"])
+    assert body["model_version"] == client.get("/model-info").json()["version"]
 
 
 def test_api_matches_the_predictor_on_the_same_customer(client, saved_dir):
