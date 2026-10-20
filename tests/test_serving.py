@@ -5,14 +5,7 @@ import pytest
 
 from churn.data import clean, load_raw, prepare_features
 from churn.predict import ChurnPredictor
-from churn.train import METADATA_FILE, MODEL_FILE, train_and_save
-
-
-@pytest.fixture(scope="module")
-def saved_dir(tmp_path_factory):
-    model_dir = tmp_path_factory.mktemp("models")
-    train_and_save(model_dir=model_dir)
-    return model_dir
+from churn.train import METADATA_FILE, MODEL_FILE
 
 
 def test_prepare_features_is_safe_to_run_twice_and_without_id():

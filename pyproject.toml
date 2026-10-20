@@ -7,7 +7,7 @@ name = "churn"
 version = "0.1.0"
 description = "Telco customer churn classification"
 requires-python = ">=3.12"
-dependencies = ["pandas", "numpy", "scikit-learn", "matplotlib"]
+dependencies = ["pandas", "numpy", "scikit-learn", "matplotlib", "fastapi", "uvicorn"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
