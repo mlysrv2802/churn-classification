@@ -32,7 +32,10 @@ Key design decisions already made:
 - Inside Docker the scheduler reaches the API at http://api:8000 (env var API_BASE_URL), not 127.0.0.1.
 - Results: Linear/Ridge/Lasso R2 ~0.82 (data is genuinely linear); tuned RandomForest ~0.76.
 
-## Project 2: churn-classification (roadmap 1-6 done; model trained and saved)
+## Project 2: churn-classification (roadmap 1-6 done; API, registry, Docker written)
+Status (as of 2026-10-20): all code written. Malay has NOT yet run the scripts himself, built Docker, or
+confirmed CI after the API/registry/Docker commits. /reload-model + its 3 tests were written but the test
+run was interrupted, so unverified. Next: he runs pytest + each script, then Docker; then optional MLflow.
 Location: D:\Malay\ws\ml\repo\churn-classification  (data/telco_churn.csv from Kaggle "Telco Customer Churn")
 GitHub: https://github.com/mlysrv2802/churn-classification (CI = pytest on Python 3.12 + 3.14, every push)
 Goal: learn classification on real, imbalanced, messy data.
@@ -44,9 +47,13 @@ Leakage checks clean. Cutoff 0.35 chosen by F1 on train out-of-fold predictions;
 uses PLACEHOLDER costs in config.py (replace with real ones).
 Key decisions: TotalCharges cleaning is the pipeline's first step (prepare_features), so the saved model
 takes raw records; anything chosen from data (cutoff, curved columns) uses TRAIN data only.
-Saved model: models/churn_model.joblib + .json metadata (git-ignored); training overwrites it (no registry yet).
-Not built yet: FastAPI + Docker, versioned model registry, MLflow, drift monitoring, GenAI/LLM APIs.
-Maybe: tidy the redundant degree-1 PolynomialFeatures + double scaling in the plain pipeline.
+Registry: models/versions/<id>/ (model.joblib + metadata.json) + models/production.json (git-ignored). A new
+version is promoted only if test ROC-AUC drops <= MAX_ACCEPTABLE_AUC_DROP (0.01); `scripts/registry.py list|rollback`.
+API: src/churn/api.py (FastAPI; /health, /model-info, /predict, /reload-model), loads production model once at startup.
+Docker: one image trains and serves (docker compose run --rm train; docker compose up -d api); paths via
+CHURN_DATA_PATH / CHURN_MODELS_DIR env vars. Plain pipeline tidy-up (single StandardScaler) is done.
+Not built yet: MLflow, drift monitoring, GenAI/LLM APIs, batch predict endpoint. Starlette warns httpx is
+deprecated for TestClient (maybe switch to httpx2, unchecked).
 
 ## Parked / ideas
 - Containerize everything is done; maybe add Docker `include` so backend compose can run standalone.
