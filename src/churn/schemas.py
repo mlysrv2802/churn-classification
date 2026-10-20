@@ -69,6 +69,12 @@ class Customer(BaseModel):
     )
 
 
+class ReloadResult(BaseModel):
+    previous_version: str
+    current_version: str
+    changed: bool
+
+
 class Prediction(BaseModel):
     churn_probability: float = Field(ge=0, le=1)
     flagged: bool = Field(description="True when the probability reaches the saved cutoff")

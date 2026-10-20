@@ -1,9 +1,13 @@
+import json
+import shutil
+
 import pytest
 from fastapi.testclient import TestClient
 
 from churn.api import create_app
 from churn.data import load_raw
 from churn.predict import ChurnPredictor
+from churn.registry import METADATA_FILE, ModelRegistry
 from churn.schemas import Customer
 
 EXAMPLE = Customer.model_config["json_schema_extra"]["example"]
@@ -65,6 +69,50 @@ def test_invalid_input_is_rejected_with_422(client, change):
 def test_missing_field_is_rejected_with_422(client):
     payload = {k: v for k, v in EXAMPLE.items() if k != "Contract"}
     assert client.post("/predict", json=payload).status_code == 422
+
+
+@pytest.fixture
+def two_versions(saved_dir, tmp_path):
+    """A private copy of the saved models with a second version (cutoff 0.9) added."""
+    root = tmp_path / "models"
+    shutil.copytree(saved_dir, root)
+    registry = ModelRegistry(root)
+    v1 = registry.production_version()
+    v2 = f"{v1}-v2"
+    shutil.copytree(registry.versions_dir / v1, registry.versions_dir / v2)
+    meta_file = registry.versions_dir / v2 / METADATA_FILE
+    meta = json.loads(meta_file.read_text(encoding="utf-8"))
+    meta.update(version=v2, threshold=0.9)
+    meta_file.write_text(json.dumps(meta), encoding="utf-8")
+    return root, registry, v1, v2
+
+
+def test_reload_switches_to_the_newly_promoted_version(two_versions):
+    root, registry, v1, v2 = two_versions
+    with TestClient(create_app(root)) as client:
+        assert client.get("/model-info").json()["version"] == v1
+        registry.promote(v2, "test")
+        body = client.post("/reload-model").json()
+        assert body == {"previous_version": v1, "current_version": v2, "changed": True}
+        assert client.get("/model-info").json()["threshold"] == 0.9
+        assert client.post("/predict", json=EXAMPLE).json()["model_version"] == v2
+
+
+def test_reload_without_a_new_promotion_reports_no_change(two_versions):
+    root, _, v1, _ = two_versions
+    with TestClient(create_app(root)) as client:
+        body = client.post("/reload-model").json()
+        assert body == {"previous_version": v1, "current_version": v1, "changed": False}
+
+
+def test_failed_reload_keeps_serving_the_old_model(two_versions):
+    root, registry, v1, _ = two_versions
+    with TestClient(create_app(root)) as client:
+        registry.pointer.write_text(json.dumps({"version": "ghost"}), encoding="utf-8")
+        response = client.post("/reload-model")
+        assert response.status_code == 500
+        assert f"still serving {v1}" in response.json()["detail"]
+        assert client.post("/predict", json=EXAMPLE).json()["model_version"] == v1
 
 
 def test_startup_fails_clearly_when_no_model_is_saved(tmp_path):
