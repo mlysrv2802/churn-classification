@@ -1,8 +1,12 @@
+import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_PATH = PROJECT_ROOT / "data" / "telco_churn.csv"
-MODELS_DIR = PROJECT_ROOT / "models"  # git-ignored: trained artifacts are not source code
+
+# Defaults work for a local checkout; Docker overrides them with environment variables.
+DATA_PATH = Path(os.environ.get("CHURN_DATA_PATH", PROJECT_ROOT / "data" / "telco_churn.csv"))
+# models/ is git-ignored: trained artifacts are not source code
+MODELS_DIR = Path(os.environ.get("CHURN_MODELS_DIR", PROJECT_ROOT / "models"))
 
 TARGET = "Churn"
 ID_COLUMN = "customerID"
