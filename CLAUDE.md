@@ -3,7 +3,7 @@
 ## About me
 - Malay, Java + Angular fullstack developer (5 yrs Angular, but away from frontend ~3 yrs). Learning ML hands-on.
 - Did a Python ML/DL course earlier, little practical experience. Wants production-grade code, not notebook toys.
-- Windows, PowerShell, VS Code. Python 3.12 venv (3.14 breaks pandas/numpy wheels). Docker Desktop + WSL2 installed.
+- Windows, PowerShell, VS Code. Python 3.14.7 venv works now (tested Oct 2026: pandas 3.0, numpy 2.5 have 3.14 wheels; CI runs 3.12 and 3.14). Docker Desktop + WSL2 installed.
 
 ## How I want you to work
 - Go step by step: give ONE step, I run it and report back, then give the next. Don't dump everything at once.
@@ -32,19 +32,21 @@ Key design decisions already made:
 - Inside Docker the scheduler reaches the API at http://api:8000 (env var API_BASE_URL), not 127.0.0.1.
 - Results: Linear/Ridge/Lasso R2 ~0.82 (data is genuinely linear); tuned RandomForest ~0.76.
 
-## Project 2: churn-classification (in progress)
+## Project 2: churn-classification (roadmap 1-6 done; model trained and saved)
 Location: D:\Malay\ws\ml\repo\churn-classification  (data/telco_churn.csv from Kaggle "Telco Customer Churn")
+GitHub: https://github.com/mlysrv2802/churn-classification (CI = pytest on Python 3.12 + 3.14, every push)
 Goal: learn classification on real, imbalanced, messy data.
-Done: first_look.py (shape, class balance, TotalCharges is text with blanks), baseline.py (Dummy vs
-LogisticRegression, shows accuracy misleads; blank TotalCharges -> 0, customerID dropped, stratified split).
-Roadmap, in order:
-1. First look and cleaning (done)
-2. Baseline model (done, waiting on my real output)
-3. Proper metrics: confusion matrix, precision, recall, F1, ROC-AUC
-4. Other models: random forest, gradient boosting, compared fairly like compare_models.py
-5. Polynomial features and non-linearity
-6. RandomizedSearchCV tuning plus a data leakage check
-Later: CI/CD with GitHub Actions, MLflow, drift monitoring, GenAI/LLM APIs (hallucinations belong here).
+Layout: src/churn/ (library), scripts/ (entry points), tests/ (pytest). Setup + script list are in README.md.
+Results: logistic regression, random forest, gradient boosting, polynomial, splines all ~0.845 ROC-AUC,
+tied within noise (std ~0.012). Final model = plain logistic regression (simplest within noise).
+Numeric columns are all mildly non-linear (MonthlyCharges most, tenure least) but curves barely help.
+Leakage checks clean. Cutoff 0.35 chosen by F1 on train out-of-fold predictions; cost-based cutoff
+uses PLACEHOLDER costs in config.py (replace with real ones).
+Key decisions: TotalCharges cleaning is the pipeline's first step (prepare_features), so the saved model
+takes raw records; anything chosen from data (cutoff, curved columns) uses TRAIN data only.
+Saved model: models/churn_model.joblib + .json metadata (git-ignored); training overwrites it (no registry yet).
+Not built yet: FastAPI + Docker, versioned model registry, MLflow, drift monitoring, GenAI/LLM APIs.
+Maybe: tidy the redundant degree-1 PolynomialFeatures + double scaling in the plain pipeline.
 
 ## Parked / ideas
 - Containerize everything is done; maybe add Docker `include` so backend compose can run standalone.
