@@ -1,5 +1,6 @@
 import pandas as pd
 import pytest
+from sklearn.preprocessing import StandardScaler
 
 from churn.data import clean, load_raw
 from churn.eda import churn_rate_by_tenure
@@ -23,6 +24,14 @@ def test_spline_columns_expand_only_the_chosen_column():
     # one column -> n_knots + degree - 1 = 8 spline columns, so 7 extra
     assert targeted.shape[1] - plain.shape[1] == 7
     assert targeted.shape[0] == plain.shape[0]
+
+
+def test_plain_numeric_columns_are_only_scaled():
+    plain = dict((name, step) for name, step, _ in build_preprocessor().transformers)
+    assert isinstance(plain["num"], StandardScaler)  # no hidden polynomial step
+
+    targeted = build_preprocessor(spline_columns=["tenure"]).transformers
+    assert isinstance(dict((n, s) for n, s, _ in targeted)["num"], StandardScaler)
 
 
 def test_spline_and_poly_cannot_be_combined():

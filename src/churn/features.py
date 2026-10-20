@@ -27,11 +27,12 @@ def build_preprocessor(
 ) -> ColumnTransformer:
     """Scale numeric columns, one-hot encode the rest.
 
+    By default (poly_degree=1) the numeric columns are just scaled.
+
     With poly_degree > 1 the numeric columns also get squares and pairwise
     interactions (e.g. tenure * MonthlyCharges), re-scaled afterwards because
-    the new columns have very different ranges. Degree 1 leaves the columns
-    unchanged, but the "poly" step always exists so a hyperparameter search
-    can tune it as `prep__num__poly__degree`.
+    the new columns have very different ranges. The step is named "poly", so a
+    hyperparameter search can tune it as `prep__num__poly__degree`.
 
     With spline_columns, ONLY those columns are expanded into a flexible curve
     (cubic splines); the remaining numeric columns stay plain straight lines.
@@ -43,13 +44,16 @@ def build_preprocessor(
     if spline_columns and poly_degree > 1:
         raise ValueError("Use either poly_degree > 1 or spline_columns, not both")
 
-    numeric = Pipeline(
-        [
-            ("scale", StandardScaler()),
-            ("poly", PolynomialFeatures(degree=poly_degree, include_bias=False)),
-            ("rescale", StandardScaler()),
-        ]
-    )
+    if poly_degree > 1:
+        numeric = Pipeline(
+            [
+                ("scale", StandardScaler()),
+                ("poly", PolynomialFeatures(degree=poly_degree, include_bias=False)),
+                ("rescale", StandardScaler()),
+            ]
+        )
+    else:
+        numeric = StandardScaler()
     if spline_columns:
         curved = list(spline_columns)
         curved_step = (

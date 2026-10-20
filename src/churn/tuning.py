@@ -19,8 +19,10 @@ def tune_logistic_regression(
     small C (strong regularisation) stops the model memorising noise. Tuning
     degree alone, with C fixed, would punish high degrees unfairly.
     """
+    # Start from degree 2 only so the "poly" step exists; the search then sets
+    # its degree to every value in DEGREES (degree 1 means no extra columns).
     search = RandomizedSearchCV(
-        build_logistic_regression(),
+        build_logistic_regression(poly_degree=2),
         param_distributions={DEGREE_PARAM: DEGREES, C_PARAM: loguniform(1e-3, 1e2)},
         n_iter=n_iter,
         scoring=scoring,
