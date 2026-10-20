@@ -10,13 +10,23 @@ def load_raw(path: Path = DATA_PATH) -> pd.DataFrame:
     return pd.read_csv(path)
 
 
-def clean(df: pd.DataFrame) -> pd.DataFrame:
-    """Return a cleaned copy: numeric TotalCharges, binary target, no ID column.
+def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with numeric TotalCharges and no customerID column.
+
+    This is the first step of every model pipeline, so a saved model accepts raw
+    customer records. It is safe to run twice (already-clean data passes through).
 
     Blank TotalCharges only occur for customers with tenure == 0 (no bill yet),
     so filling them with 0 is semantically correct.
     """
     out = df.copy()
-    out["TotalCharges"] = pd.to_numeric(out["TotalCharges"], errors="coerce").fillna(0.0)
+    if "TotalCharges" in out.columns:  # absent in single-column experiments
+        out["TotalCharges"] = pd.to_numeric(out["TotalCharges"], errors="coerce").fillna(0.0)
+    return out.drop(columns=[ID_COLUMN], errors="ignore")
+
+
+def clean(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a cleaned copy of the training data: prepared features + 0/1 target."""
+    out = prepare_features(df)
     out[TARGET] = (out[TARGET] == "Yes").astype(int)
-    return out.drop(columns=[ID_COLUMN])
+    return out

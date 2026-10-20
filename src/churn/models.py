@@ -3,8 +3,10 @@ from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer
 
 from churn.config import RANDOM_STATE
+from churn.data import prepare_features
 from churn.features import build_preprocessor
 
 
@@ -20,7 +22,13 @@ def _pipeline(
 ) -> Pipeline:
     """Preprocessing + model in ONE pipeline, so train and serve cannot drift."""
     prep = build_preprocessor(poly_degree, spline_columns)
-    return Pipeline([("prep", prep), ("model", estimator)])
+    return Pipeline(
+        [
+            ("clean", FunctionTransformer(prepare_features)),
+            ("prep", prep),
+            ("model", estimator),
+        ]
+    )
 
 
 def build_logistic_regression(
